@@ -184,7 +184,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       {/* Filter panel */}
       {showFilters && (
         <div className="w-full max-w-sm mb-4 rounded-xl border border-border bg-card/80 backdrop-blur-sm p-4">
-          <Form key={searchParams.toString()} method="get" className="space-y-3">
+          <Form key={searchParams.toString()} method="get" className="space-y-3" onSubmit={() => setShowFilters(false)}>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Make</label>

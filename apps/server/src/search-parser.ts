@@ -56,12 +56,19 @@ export function parseSearch(html: string): CarAd[] {
     // We pick the first occurrence.
     const priceText = row.querySelector(".pricefield-primary")?.textContent;
 
+    const imageUrl =
+      row.querySelector(".talalatisor-kep img")?.getAttribute("src") ?? null;
+
+    // This regex looks for digits followed by 'x' followed by digits
+    const upsizedImageUrl = imageUrl
+      ? imageUrl.replace(/\d+x\d+/, "640x480")
+      : null;
+
     return {
       adId: parkingBtn?.getAttribute("data-hirkod") ?? null,
       title: clean(titleLink?.textContent),
       url: titleLink?.getAttribute("href") ?? null,
-      imageUrl:
-        row.querySelector(".talalatisor-kep img")?.getAttribute("src") ?? null,
+      imageUrl: upsizedImageUrl,
       price: clean(priceText),
       specs,
       description: clean(
