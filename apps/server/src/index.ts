@@ -7,7 +7,8 @@ import { queryFlareSolverr, FLARESOLVERR_URL } from "./utils";
 import { parseSearch } from "./search-parser";
 import { parseListing } from "./listing-parser";
 import { RedisClient } from "bun";
-
+import { transformCarData } from "./transform";
+import type { RawData } from "./transform";
 const app = new Hono();
 
 app.use(cors());
@@ -153,6 +154,28 @@ app.get("/listing", async (c) => {
   await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(responseBody));
 
   return c.json(responseBody);
+});
+
+app.get("/brandsAndModels", async (c) => {
+  const url = "https://api.hasznaltauto.hu/v2/tomb/markakSzemelyautoFilter,modellekSzemelyautoFilter";
+  const cacheKey = `brandAndModels`;
+  
+  const cached = await redis.get(cacheKey);
+  if (cached) {
+    return c.json(JSON.parse(cached));
+  }
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    return c.json({ error: "Failed to fetch" }, 502);
+  }
+
+  const rawData = await res.json() as RawData;
+  const transformedData = transformCarData(rawData);
+
+  await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(transformedData));
+  
+  return c.json(transformedData);
 });
 
 app.get("/health", async (c) => {

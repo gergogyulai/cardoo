@@ -19,6 +19,22 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
+export interface TransformedData {
+  id: number;
+  name: string;
+  count: number;
+  models: {
+    id: number;
+    name: string;
+    count: number;
+    subModels: {
+      id: number;
+      name: string;
+      count: number;
+    }[];
+  }[];
+}
+
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const serverUrl =
     (import.meta as { env?: Record<string, string> }).env?.VITE_SERVER_URL ??
@@ -31,17 +47,23 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   if (sp.get("yearMax")) body.yearMax = Number(sp.get("yearMax"));
   if (sp.get("priceMax")) body.hufPriceMax = Number(sp.get("priceMax"));
   if (sp.get("mileageMax")) body.mileageMax = Number(sp.get("mileageMax"));
+  if (sp.get("brandId")) body.brandId = Number(sp.get("brandId"));
+  if (sp.get("modelId")) body.modelId = Number(sp.get("modelId"));
   try {
-    const res = await fetch(`${serverUrl}/search`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    return { cars: (data.results ?? []) as CarAd[], error: null };
+    const [searchRes, brandsRes] = await Promise.all([
+      fetch(`${serverUrl}/search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+      fetch(`${serverUrl}/brandsAndModels`),
+    ]);
+    if (!searchRes.ok) throw new Error(`HTTP ${searchRes.status}`);
+    const data = await searchRes.json();
+    const brands: TransformedData[] = brandsRes.ok ? await brandsRes.json() : [];
+    return { cars: (data.results ?? []) as CarAd[], brands, error: null };
   } catch (e) {
-    return { cars: [] as CarAd[], error: String(e) };
+    return { cars: [] as CarAd[], brands: [] as TransformedData[], error: String(e) };
   }
 }
 
@@ -86,6 +108,11 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [liked, setLiked] = useState<CarAd[]>([]);
   const [pendingSwipe, setPendingSwipe] = useState<"like" | "dislike" | null>(null);
+  const [filterMakeId, setFilterMakeId] = useState(searchParams.get("brandId") ?? "");
+
+  useEffect(() => {
+    setFilterMakeId(searchParams.get("brandId") ?? "");
+  }, [searchParams]);
 
   const isLoading = !loaderData || navigation.state === "loading";
   const hasActiveFilters = Array.from(searchParams.values()).some(Boolean);
@@ -106,7 +133,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     );
   }
 
-  const { cars, error } = loaderData;
+  const { cars, brands = [], error } = loaderData;
+  const availableModels = brands.find((b) => String(b.id) === filterMakeId)?.models ?? [];
   const remaining = cars.length - currentIndex;
   const visibleCars = cars.slice(currentIndex, currentIndex + 3);
 
@@ -157,6 +185,50 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       {showFilters && (
         <div className="w-full max-w-sm mb-4 rounded-xl border border-border bg-card/80 backdrop-blur-sm p-4">
           <Form key={searchParams.toString()} method="get" className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Make</label>
+                <select
+                  name="brandId"
+                  value={filterMakeId}
+                  onChange={(e) => setFilterMakeId(e.target.value)}
+                  className={SELECT_CLS}
+                >
+                  <option value="">Any make</option>
+                  {brands.map((b) => (
+                    <option key={b.id} value={b.id}>{b.name} ({b.count})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Model</label>
+                <select
+                  key={filterMakeId}
+                  name="modelId"
+                  defaultValue={searchParams.get("modelId") ?? ""}
+                  disabled={!filterMakeId}
+                  className={SELECT_CLS}
+                >
+                  <option value="">Any model</option>
+                  {availableModels.map((m) =>
+                    m.subModels.length > 0 ? (
+                      <optgroup key={m.id} label={`${m.name} (${m.count})`}>
+                        <option value={m.id}>All {m.name}</option>
+                        {m.subModels.map((sub) => (
+                          <option key={sub.id} value={sub.id}>
+                            {sub.name} ({sub.count})
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.count})
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Fuel type</label>
