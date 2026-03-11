@@ -117,10 +117,15 @@ app.post("/search", async (c) => {
 });
 
 app.get("/listing", async (c) => {
-  const targetUrl = c.req.query("url");
+  let targetUrl = c.req.query("url");
 
   if (!targetUrl) {
     return c.json({ error: "Missing 'url' search parameter" }, 400);
+  }
+
+  // Resolve relative URLs against the base site
+  if (targetUrl.startsWith("/")) {
+    targetUrl = `https://www.hasznaltauto.hu${targetUrl}`;
   }
 
   console.log("Received listing request for URL:", targetUrl);

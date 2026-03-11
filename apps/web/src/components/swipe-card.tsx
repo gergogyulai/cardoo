@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BadgeCheck, Car, Calendar, Fuel, Gauge, ShieldCheck, Store, Zap } from "lucide-react";
+import { BadgeCheck, Car, Calendar, Fuel, Gauge, Info, ShieldCheck, Store, Zap } from "lucide-react";
 import { cn } from "@cardoo/ui/lib/utils";
 
 export interface CarSpecs {
@@ -31,6 +31,7 @@ interface SwipeCardProps {
   isTop: boolean;
   stackIndex: number;
   externalSwipe?: "like" | "dislike" | null;
+  onOpenDetail?: () => void;
 }
 
 function SpecPill({
@@ -54,12 +55,14 @@ export function SwipeCard({
   isTop,
   stackIndex,
   externalSwipe,
+  onOpenDetail,
 }: SwipeCardProps) {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [flyDirection, setFlyDirection] = useState<"like" | "dislike" | null>(null);
 
   const startPos = useRef({ x: 0, y: 0 });
+  const hasDragged = useRef(false);
   const cardEl = useRef<HTMLDivElement>(null);
   const onSwipeRef = useRef(onSwipe);
 
@@ -86,15 +89,19 @@ export function SwipeCard({
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isTop || flyDirection) return;
     setIsDragging(true);
+    hasDragged.current = false;
     startPos.current = { x: e.clientX, y: e.clientY };
     cardEl.current?.setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDragging) return;
+    const dx = e.clientX - startPos.current.x;
+    const dy = e.clientY - startPos.current.y;
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) hasDragged.current = true;
     setDragOffset({
-      x: e.clientX - startPos.current.x,
-      y: (e.clientY - startPos.current.y) * 0.25,
+      x: dx,
+      y: dy * 0.25,
     });
   };
 
@@ -190,7 +197,7 @@ export function SwipeCard({
       </div>
 
       {/* Car image */}
-      <div className="relative w-full h-[58%] bg-muted overflow-hidden">
+      <div className="relative w-full h-[62%] bg-muted overflow-hidden">
         {car.imageUrl ? (
           <img
             src={car.imageUrl}
@@ -211,11 +218,11 @@ export function SwipeCard({
       </div>
 
       {/* Info section */}
-      <div className="px-5 pt-2 pb-5 flex flex-col gap-3">
+      <div className="px-4 pt-2 pb-4 flex flex-col gap-2">
         {/* Title + Price */}
         <div className="flex items-start justify-between gap-3">
           <h2
-            className="text-lg leading-tight text-card-foreground flex-1 min-w-0"
+            className="text-base leading-tight text-card-foreground flex-1 min-w-0"
             style={{ fontFamily: "'DM Serif Display', serif" }}
           >
             {car.title}
@@ -242,9 +249,9 @@ export function SwipeCard({
           {powerLabel && <SpecPill icon={Zap}>{powerLabel}</SpecPill>}
         </div>
 
-        {/* Badges + Trader */}
-        <div className="flex items-center justify-between gap-2 min-h-5.5">
-          <div className="flex gap-1.5 flex-wrap">
+        {/* Badges + Trader + Info button */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex gap-1.5 flex-wrap flex-1 min-w-0">
             {car.isGuaranteed && (
               <span className="flex items-center gap-1 text-xs bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">
                 <ShieldCheck className="w-3 h-3 shrink-0" />
@@ -257,13 +264,34 @@ export function SwipeCard({
                 VIN Verified
               </span>
             )}
+            {!car.isGuaranteed && !car.hasVerifiedHistory && car.trader && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground/70">
+                <Store className="w-3 h-3 shrink-0" />
+                <span className="max-w-32 truncate">{car.trader}</span>
+              </span>
+            )}
           </div>
-          {car.trader && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground/70 shrink-0">
-              <Store className="w-3 h-3 shrink-0" />
-              <span className="max-w-27.5 truncate">{car.trader}</span>
-            </span>
-          )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {car.trader && (car.isGuaranteed || car.hasVerifiedHistory) && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground/70">
+                <Store className="w-3 h-3 shrink-0" />
+                <span className="max-w-24 truncate">{car.trader}</span>
+              </span>
+            )}
+            {isTop && onOpenDetail && (
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!hasDragged.current) onOpenDetail();
+                }}
+                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-muted-foreground hover:text-foreground transition-colors ml-1"
+                aria-label="View details"
+              >
+                <Info className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

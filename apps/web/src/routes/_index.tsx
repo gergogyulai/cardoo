@@ -4,6 +4,7 @@ import { ExternalLink, Heart, Loader2, RotateCcw, SlidersHorizontal, X } from "l
 import { Form, useNavigate, useNavigation, useSearchParams } from "react-router";
 import { cn } from "@cardoo/ui/lib/utils";
 import { SwipeCard, type CarAd } from "../components/swipe-card";
+import { ListingDetail } from "../components/listing-detail";
 
 export const links: Route.LinksFunction = () => [
   {
@@ -109,6 +110,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const [liked, setLiked] = useState<CarAd[]>([]);
   const [pendingSwipe, setPendingSwipe] = useState<"like" | "dislike" | null>(null);
   const [filterMakeId, setFilterMakeId] = useState(searchParams.get("brandId") ?? "");
+  const [detailCar, setDetailCar] = useState<CarAd | null>(null);
 
   useEffect(() => {
     setFilterMakeId(searchParams.get("brandId") ?? "");
@@ -122,6 +124,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     setCurrentIndex(0);
     setLiked([]);
     setPendingSwipe(null);
+    setDetailCar(null);
   }, [loaderData]);
 
   if (isLoading) {
@@ -152,7 +155,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   };
 
   return (
-    <div className="flex flex-col items-center min-h-[calc(100vh-3rem)] px-4 pt-4 pb-8">
+    <div className="flex flex-col items-center min-h-[calc(100dvh-3rem)] px-3 pt-3 pb-6">
       {/* Stats bar */}
       <div className="w-full max-w-sm flex justify-between items-center mb-2 px-1">
         <span className="text-sm text-muted-foreground">
@@ -295,7 +298,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       )}
 
       {/* Card stack */}
-      <div className="relative w-full max-w-sm" style={{ height: 520 }}>
+      <div className="relative w-full max-w-sm flex-1" style={{ minHeight: 480, maxHeight: 600 }}>
         {error ? (
           <ErrorState message={error} />
         ) : remaining === 0 ? (
@@ -311,6 +314,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 stackIndex={i}
                 onSwipe={i === 0 ? handleSwipe : () => {}}
                 externalSwipe={i === 0 ? pendingSwipe : null}
+                onOpenDetail={i === 0 ? () => setDetailCar(car) : undefined}
               />
             );
           })
@@ -319,7 +323,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
       {/* Action buttons */}
       {remaining > 0 && !error && (
-        <div className="flex items-center gap-8 mt-8">
+        <div className="flex items-center gap-8 mt-5">
           <ActionButton
             onClick={() => handleButton("dislike")}
             variant="dislike"
@@ -335,7 +339,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
       {/* Liked cars panel */}
       {showLiked && (
-        <LikedPanel cars={liked} onClose={() => setShowLiked(false)} />
+        <LikedPanel cars={liked} onClose={() => setShowLiked(false)} onOpenDetail={setDetailCar} />
+      )}
+
+      {/* Listing detail sheet */}
+      {detailCar && (
+        <ListingDetail car={detailCar} onClose={() => setDetailCar(null)} />
       )}
     </div>
   );
@@ -397,7 +406,7 @@ function ErrorState({ message }: { message: string }) {
   );
 }
 
-function LikedPanel({ cars, onClose }: { cars: CarAd[]; onClose: () => void }) {
+function LikedPanel({ cars, onClose, onOpenDetail }: { cars: CarAd[]; onClose: () => void; onOpenDetail: (car: CarAd) => void }) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
       {/* backdrop */}
@@ -457,18 +466,16 @@ function LikedPanel({ cars, onClose }: { cars: CarAd[]; onClose: () => void }) {
                   {car.specs.fuel && <span>· {car.specs.fuel}</span>}
                 </div>
               </div>
-              {/* link */}
-              {car.url && (
-                <a
-                  href={car.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shrink-0 mr-3 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  aria-label="Open listing"
+              {/* actions */}
+              <div className="flex flex-col items-center gap-1 mr-2 shrink-0">
+                <button
+                  onClick={() => { onClose(); onOpenDetail(car); }}
+                  className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  aria-label="View details"
                 >
                   <ExternalLink className="w-4 h-4" />
-                </a>
-              )}
+                </button>
+              </div>
             </div>
           ))}
         </div>
