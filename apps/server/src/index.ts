@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { decodeParams, encodeParams, type SearchCriteria } from "./search";
 import { BODY_STYLE_MAP, CONDITION_MAP, FUEL_TYPE_MAP } from "./constants";
 import type { BodyStyleKey, ConditionKey, FuelTypeKey } from "./constants";
@@ -8,6 +9,8 @@ import { parseListing } from "./listing-parser";
 import { RedisClient } from "bun";
 
 const app = new Hono();
+
+app.use(cors());
 
 const TARGET_URL = "https://www.hasznaltauto.hu/talalatilista";
 const CACHE_TTL = 30 * 60; // 30 minutes in seconds
