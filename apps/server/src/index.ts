@@ -30,6 +30,7 @@ interface SearchParams {
   condition?: ConditionKey;
   doors?: 1 | 2 | 3 | 4 | 5;
   seats?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+  page?: number;
 
   hufPriceMin?: number;
   hufPriceMax?: number;
@@ -54,6 +55,7 @@ interface SearchParams {
 
 app.post("/search", async (c) => {
   const params: SearchParams = await c.req.json().catch(() => ({}));
+  const pagination = params.page ? params.page : 1;
   console.log("Received search request with params:", params);
 
   const intermediate: Partial<SearchCriteria> = {
@@ -82,7 +84,7 @@ app.post("/search", async (c) => {
   console.log("Encoded params:", encodedParams);
   console.log("Decoded params (for verification):", decodeParams(encodedParams));
 
-  const url = `${TARGET_URL}/${encodedParams}`;
+  const url = `${TARGET_URL}/${encodedParams}/page${pagination}`;
   console.log("Constructed URL for FlareSolverr:", url);
 
   const cacheKey = `search:${encodedParams}`;
